@@ -493,20 +493,10 @@ select.form-control { appearance: auto; }
 <!-- Loading overlay -->
 <div class="loading-overlay" id="loadingOverlay"><div class="spinner"></div></div>
 
-<!-- Setup overlay -->
-<div class="setup-overlay" id="setupOverlay">
-    <div class="setup-box">
-        <h2>初期設定</h2>
-        <p>GAS WebアプリのURLを入力してください。<br>デプロイ済みのGoogle Apps ScriptのURLが必要です。</p>
-        <input type="text" class="form-control" id="setupGasUrl" placeholder="https://script.google.com/macros/s/.../exec">
-        <button class="btn btn-primary" onclick="saveGasUrl()" style="width:100%;">接続する</button>
-        <p style="font-size:12px;color:var(--text-muted);margin-top:12px;">※ URLはブラウザのローカルストレージに保存されます</p>
-    </div>
-</div>
 
 <script>
 /* ===== Global State ===== */
-var GAS_URL = '';
+var GAS_URL = 'https://script.google.com/macros/s/AKfycbwNVfMD7Htco2hmKzhO4uIxcaO0daCsaoW3KYvC7N2y7CvF_FkhObJlOh8go9w8ehXC/exec';
 var currentTab = 'dashboard';
 var inquiriesData = [];
 var staffData = [];
@@ -1022,42 +1012,12 @@ function clearAllData() {
     });
 }
 
-/* ===== Setup ===== */
-function checkGasUrl() {
-    var saved = localStorage.getItem('fudosan_gas_url');
-    if (saved) {
-        GAS_URL = saved;
-        document.getElementById('setupOverlay').classList.remove('show');
-        /* Load staff data first for inquiry modal, then load current tab */
-        apiGet('getStaff', null, function(d) {
-            staffData = (d && !d.error) ? (d.data || d || []) : [];
-            loadTabData(currentTab);
-        });
-    } else {
-        document.getElementById('setupOverlay').classList.add('show');
-    }
-}
-
-function saveGasUrl() {
-    var url = document.getElementById('setupGasUrl').value.trim();
-    if (!url) { showToast('URLを入力してください', 'warning'); return; }
-    if (url.indexOf('https://script.google.com/') !== 0) {
-        showToast('正しいGAS URLを入力してください', 'warning');
-        return;
-    }
-    localStorage.setItem('fudosan_gas_url', url);
-    GAS_URL = url;
-    document.getElementById('setupOverlay').classList.remove('show');
-    showToast('接続設定を保存しました', 'success');
+/* ===== Init ===== */
+document.addEventListener('DOMContentLoaded', function() {
     apiGet('getStaff', null, function(d) {
         staffData = (d && !d.error) ? (d.data || d || []) : [];
         loadTabData(currentTab);
     });
-}
-
-/* ===== Init ===== */
-document.addEventListener('DOMContentLoaded', function() {
-    checkGasUrl();
 });
 </script>
 </body>
