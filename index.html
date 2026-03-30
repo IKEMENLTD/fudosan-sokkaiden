@@ -1,0 +1,1064 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>不動産反響システム - 即架電版</title>
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4"></script>
+<style>
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+:root {
+    --primary: #e74c3c;
+    --primary-light: #fdf0ef;
+    --primary-hover: #c0392b;
+    --secondary: #6c757d;
+    --surface: #ffffff;
+    --background: #f4f6f9;
+    --text-main: #212529;
+    --text-muted: #6c757d;
+    --border: #dee2e6;
+    --radius: 4px;
+    --shadow: 0 1px 3px rgba(0,0,0,0.1);
+    --sidebar-width: 250px;
+    --success: #27ae60;
+    --warning: #f39c12;
+    --danger: #e74c3c;
+    --info: #3498db;
+}
+body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", "Hiragino Kaku Gothic ProN", "Noto Sans JP", sans-serif; background: var(--background); color: var(--text-main); line-height: 1.6; }
+a { color: inherit; text-decoration: none; }
+
+/* Sidebar */
+.sidebar {
+    position: fixed; top: 0; left: 0; width: var(--sidebar-width); height: 100vh;
+    background: #1a202c; color: #fff; z-index: 100; display: flex; flex-direction: column;
+    transition: transform 0.3s ease;
+}
+.sidebar-brand { padding: 24px 20px 16px; border-bottom: 1px solid rgba(255,255,255,0.08); }
+.sidebar-brand-title { font-size: 18px; font-weight: 700; letter-spacing: 0.5px; }
+.sidebar-brand-sub { font-size: 12px; color: rgba(255,255,255,0.5); margin-top: 2px; }
+.sidebar-nav { flex: 1; padding: 12px 0; overflow-y: auto; }
+.nav-item {
+    display: flex; align-items: center; gap: 12px; padding: 12px 20px; cursor: pointer;
+    color: rgba(255,255,255,0.65); transition: all 0.15s; font-size: 14px;
+}
+.nav-item:hover { background: rgba(255,255,255,0.06); color: #fff; }
+.nav-item.active { background: rgba(231,76,60,0.18); color: #fff; border-right: 3px solid var(--primary); }
+.nav-item svg { width: 18px; height: 18px; flex-shrink: 0; }
+
+/* Hamburger */
+.hamburger {
+    display: none; position: fixed; top: 12px; left: 12px; z-index: 200;
+    background: #1a202c; color: #fff; border: none; border-radius: var(--radius);
+    padding: 8px 10px; cursor: pointer; font-size: 20px; line-height: 1;
+}
+.overlay { display: none; position: fixed; inset: 0; background: rgba(0,0,0,0.4); z-index: 90; }
+
+/* Main */
+.main { margin-left: var(--sidebar-width); min-height: 100vh; }
+.header {
+    background: var(--surface); border-bottom: 1px solid var(--border);
+    padding: 16px 28px; display: flex; align-items: center; gap: 16px;
+    box-shadow: var(--shadow);
+}
+.header-title { font-size: 18px; font-weight: 600; }
+.content { padding: 24px 28px; }
+
+/* Cards */
+.stat-row { display: grid; grid-template-columns: repeat(4, 1fr); gap: 16px; margin-bottom: 24px; }
+.stat-card {
+    background: var(--surface); border-radius: var(--radius); padding: 20px;
+    box-shadow: var(--shadow); border-left: 4px solid var(--border);
+}
+.stat-card[data-color="primary"] { border-left-color: var(--primary); }
+.stat-card[data-color="danger"] { border-left-color: var(--danger); }
+.stat-card[data-color="success"] { border-left-color: var(--success); }
+.stat-card[data-color="info"] { border-left-color: var(--info); }
+.stat-label { font-size: 13px; color: var(--text-muted); margin-bottom: 4px; }
+.stat-value { font-size: 28px; font-weight: 700; }
+.stat-card[data-color="primary"] .stat-value { color: var(--primary); }
+.stat-card[data-color="danger"] .stat-value { color: var(--danger); }
+.stat-card[data-color="success"] .stat-value { color: var(--success); }
+.stat-card[data-color="info"] .stat-value { color: var(--info); }
+
+/* Charts */
+.chart-row { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; margin-bottom: 24px; }
+.chart-box {
+    background: var(--surface); border-radius: var(--radius); padding: 20px;
+    box-shadow: var(--shadow);
+}
+.chart-box h3 { font-size: 14px; font-weight: 600; margin-bottom: 16px; color: var(--text-main); }
+.chart-wrap { position: relative; height: 260px; }
+
+/* Tables */
+.panel {
+    background: var(--surface); border-radius: var(--radius);
+    box-shadow: var(--shadow); overflow: hidden;
+}
+.panel-header {
+    padding: 16px 20px; display: flex; align-items: center; justify-content: space-between;
+    border-bottom: 1px solid var(--border); flex-wrap: wrap; gap: 8px;
+}
+.panel-header h3 { font-size: 15px; font-weight: 600; }
+.table-wrap { overflow-x: auto; }
+table { width: 100%; border-collapse: collapse; font-size: 13px; }
+thead th {
+    background: #f8f9fa; padding: 10px 12px; text-align: left; font-weight: 600;
+    border-bottom: 2px solid var(--border); white-space: nowrap; font-size: 12px;
+    color: var(--text-muted); text-transform: uppercase; letter-spacing: 0.3px;
+}
+tbody td { padding: 10px 12px; border-bottom: 1px solid var(--border); vertical-align: middle; }
+tbody tr:hover { background: #f8f9fb; }
+
+/* Badges */
+.badge {
+    display: inline-block; padding: 2px 8px; border-radius: 10px;
+    font-size: 11px; font-weight: 600; white-space: nowrap;
+}
+.badge-red { background: #fde8e8; color: #c0392b; }
+.badge-yellow { background: #fef5e0; color: #d68910; }
+.badge-green { background: #e8f8ef; color: #1e8449; }
+.badge-gray { background: #eaecee; color: #5d6d7e; }
+.badge-blue { background: #e8f0fe; color: #2471a3; }
+.badge-darkgray { background: #d5d8dc; color: #2c3e50; }
+.badge-darkred { background: #f5b7b1; color: #78281f; }
+.badge-orange { background: #fdebd0; color: #af601a; }
+.badge-purple { background: #ebdef0; color: #6c3483; }
+
+/* Buttons */
+.btn {
+    display: inline-flex; align-items: center; gap: 6px; padding: 8px 16px;
+    border: none; border-radius: var(--radius); font-size: 13px; font-weight: 500;
+    cursor: pointer; transition: all 0.15s; white-space: nowrap;
+}
+.btn-primary { background: var(--primary); color: #fff; }
+.btn-primary:hover { background: var(--primary-hover); }
+.btn-secondary { background: var(--secondary); color: #fff; }
+.btn-secondary:hover { background: #5a6268; }
+.btn-success { background: var(--success); color: #fff; }
+.btn-success:hover { background: #219a52; }
+.btn-danger { background: var(--danger); color: #fff; }
+.btn-danger:hover { background: var(--primary-hover); }
+.btn-sm { padding: 4px 10px; font-size: 12px; }
+.btn-outline {
+    background: transparent; border: 1px solid var(--border); color: var(--text-main);
+}
+.btn-outline:hover { background: #f8f9fa; }
+
+/* Form */
+.form-group { margin-bottom: 16px; }
+.form-group label { display: block; font-size: 13px; font-weight: 600; margin-bottom: 4px; color: var(--text-main); }
+.form-control {
+    width: 100%; padding: 8px 12px; border: 1px solid var(--border); border-radius: var(--radius);
+    font-size: 14px; color: var(--text-main); background: #fff; transition: border-color 0.15s;
+}
+.form-control:focus { outline: none; border-color: var(--primary); box-shadow: 0 0 0 2px rgba(231,76,60,0.15); }
+select.form-control { appearance: auto; }
+.form-row { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; }
+.form-section { margin-bottom: 28px; }
+.form-section-title { font-size: 15px; font-weight: 700; margin-bottom: 12px; padding-bottom: 8px; border-bottom: 2px solid var(--primary); display: inline-block; }
+
+/* Search */
+.search-box {
+    padding: 8px 12px; border: 1px solid var(--border); border-radius: var(--radius);
+    font-size: 13px; width: 260px; max-width: 100%;
+}
+.search-box:focus { outline: none; border-color: var(--primary); }
+
+/* Modal */
+.modal-backdrop {
+    display: none; position: fixed; inset: 0; background: rgba(0,0,0,0.5);
+    z-index: 300; justify-content: center; align-items: flex-start; padding: 40px 16px;
+    overflow-y: auto;
+}
+.modal-backdrop.show { display: flex; }
+.modal {
+    background: var(--surface); border-radius: 6px; width: 100%; max-width: 600px;
+    box-shadow: 0 8px 32px rgba(0,0,0,0.2); animation: modalIn 0.2s ease;
+}
+@keyframes modalIn { from { opacity: 0; transform: translateY(-20px); } to { opacity: 1; transform: translateY(0); } }
+.modal-head {
+    padding: 16px 20px; border-bottom: 1px solid var(--border);
+    display: flex; justify-content: space-between; align-items: center;
+}
+.modal-head h3 { font-size: 16px; font-weight: 600; }
+.modal-close { background: none; border: none; font-size: 22px; cursor: pointer; color: var(--text-muted); padding: 0 4px; }
+.modal-close:hover { color: var(--text-main); }
+.modal-body { padding: 20px; }
+.modal-foot { padding: 12px 20px; border-top: 1px solid var(--border); display: flex; justify-content: flex-end; gap: 8px; }
+
+/* Toast */
+.toast-container { position: fixed; top: 16px; right: 16px; z-index: 500; display: flex; flex-direction: column; gap: 8px; }
+.toast {
+    padding: 12px 20px; border-radius: var(--radius); color: #fff; font-size: 13px;
+    font-weight: 500; box-shadow: 0 4px 12px rgba(0,0,0,0.15); animation: toastIn 0.3s ease;
+    max-width: 360px;
+}
+@keyframes toastIn { from { opacity: 0; transform: translateX(40px); } to { opacity: 1; transform: translateX(0); } }
+.toast-success { background: var(--success); }
+.toast-danger { background: var(--danger); }
+.toast-warning { background: var(--warning); }
+.toast-info { background: var(--info); }
+
+/* Loading */
+.loading-overlay {
+    display: none; position: fixed; inset: 0; background: rgba(255,255,255,0.7);
+    z-index: 400; justify-content: center; align-items: center;
+}
+.loading-overlay.show { display: flex; }
+.spinner {
+    width: 36px; height: 36px; border: 3px solid var(--border);
+    border-top-color: var(--primary); border-radius: 50%; animation: spin 0.7s linear infinite;
+}
+@keyframes spin { to { transform: rotate(360deg); } }
+
+/* Setup overlay */
+.setup-overlay {
+    display: none; position: fixed; inset: 0; background: rgba(26,32,44,0.92);
+    z-index: 600; justify-content: center; align-items: center; padding: 20px;
+}
+.setup-overlay.show { display: flex; }
+.setup-box {
+    background: #fff; border-radius: 8px; padding: 40px; max-width: 520px; width: 100%; text-align: center;
+}
+.setup-box h2 { font-size: 20px; margin-bottom: 8px; }
+.setup-box p { color: var(--text-muted); font-size: 14px; margin-bottom: 20px; }
+.setup-box .form-control { margin-bottom: 16px; text-align: center; }
+
+/* Tab sections */
+.tab-section { display: none; }
+.tab-section.active { display: block; }
+
+/* Responsive */
+@media (max-width: 1200px) {
+    .stat-row { grid-template-columns: repeat(2, 1fr); }
+}
+@media (max-width: 768px) {
+    .hamburger { display: block; }
+    .sidebar { transform: translateX(-100%); }
+    .sidebar.open { transform: translateX(0); }
+    .overlay.show { display: block; }
+    .main { margin-left: 0; }
+    .header { padding: 16px 16px 16px 56px; }
+    .content { padding: 16px; }
+    .stat-row { grid-template-columns: 1fr; }
+    .chart-row { grid-template-columns: 1fr; }
+    .form-row { grid-template-columns: 1fr; }
+    .search-box { width: 100%; }
+    .panel-header { flex-direction: column; align-items: flex-start; }
+}
+
+/* Scrollbar */
+::-webkit-scrollbar { width: 6px; height: 6px; }
+::-webkit-scrollbar-thumb { background: #ccc; border-radius: 3px; }
+</style>
+</head>
+<body>
+
+<!-- Hamburger -->
+<button class="hamburger" id="hamburger" onclick="toggleSidebar()">
+<svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2"><line x1="3" y1="6" x2="21" y2="6"/><line x1="3" y1="12" x2="21" y2="12"/><line x1="3" y1="18" x2="21" y2="18"/></svg>
+</button>
+
+<!-- Overlay for mobile -->
+<div class="overlay" id="sidebarOverlay" onclick="toggleSidebar()"></div>
+
+<!-- Sidebar -->
+<div class="sidebar" id="sidebar">
+    <div class="sidebar-brand">
+        <div class="sidebar-brand-title">不動産反響システム</div>
+        <div class="sidebar-brand-sub">即架電版</div>
+    </div>
+    <nav class="sidebar-nav">
+        <div class="nav-item active" data-tab="dashboard" onclick="switchTab('dashboard')">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="7" height="7" rx="1"/><rect x="14" y="3" width="7" height="7" rx="1"/><rect x="3" y="14" width="7" height="7" rx="1"/><rect x="14" y="14" width="7" height="7" rx="1"/></svg>
+            ダッシュボード
+        </div>
+        <div class="nav-item" data-tab="inquiries" onclick="switchTab('inquiries')">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/></svg>
+            反響一覧
+        </div>
+        <div class="nav-item" data-tab="staff" onclick="switchTab('staff')">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M17 21v-2a4 4 0 00-4-4H5a4 4 0 00-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 00-3-3.87"/><path d="M16 3.13a4 4 0 010 7.75"/></svg>
+            担当者マスタ
+        </div>
+        <div class="nav-item" data-tab="log" onclick="switchTab('log')">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="22 12 18 12 15 21 9 3 6 12 2 12"/></svg>
+            実行ログ
+        </div>
+        <div class="nav-item" data-tab="settings" onclick="switchTab('settings')">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 00.33 1.82l.06.06a2 2 0 010 2.83 2 2 0 01-2.83 0l-.06-.06a1.65 1.65 0 00-1.82-.33 1.65 1.65 0 00-1 1.51V21a2 2 0 01-4 0v-.09A1.65 1.65 0 009 19.4a1.65 1.65 0 00-1.82.33l-.06.06a2 2 0 01-2.83 0 2 2 0 010-2.83l.06-.06A1.65 1.65 0 004.68 15a1.65 1.65 0 00-1.51-1H3a2 2 0 010-4h.09A1.65 1.65 0 004.6 9a1.65 1.65 0 00-.33-1.82l-.06-.06a2 2 0 012.83-2.83l.06.06A1.65 1.65 0 009 4.68a1.65 1.65 0 001-1.51V3a2 2 0 014 0v.09a1.65 1.65 0 001 1.51 1.65 1.65 0 001.82-.33l.06-.06a2 2 0 012.83 2.83l-.06.06A1.65 1.65 0 0019.32 9a1.65 1.65 0 001.51 1H21a2 2 0 010 4h-.09a1.65 1.65 0 00-1.51 1z"/></svg>
+            設定
+        </div>
+    </nav>
+</div>
+
+<!-- Main -->
+<div class="main">
+    <div class="header">
+        <h1 class="header-title" id="headerTitle">ダッシュボード</h1>
+    </div>
+    <div class="content">
+
+        <!-- Tab: Dashboard -->
+        <div class="tab-section active" id="tab-dashboard">
+            <div class="stat-row">
+                <div class="stat-card" data-color="primary">
+                    <div class="stat-label">本日の反響</div>
+                    <div class="stat-value" id="statToday">--</div>
+                </div>
+                <div class="stat-card" data-color="danger">
+                    <div class="stat-label">未対応</div>
+                    <div class="stat-value" id="statUnattended">--</div>
+                </div>
+                <div class="stat-card" data-color="success">
+                    <div class="stat-label">接続済</div>
+                    <div class="stat-value" id="statConnected">--</div>
+                </div>
+                <div class="stat-card" data-color="info">
+                    <div class="stat-label">接続率</div>
+                    <div class="stat-value" id="statRate">--%</div>
+                </div>
+            </div>
+            <div class="chart-row">
+                <div class="chart-box">
+                    <h3>直近7日間の反響数</h3>
+                    <div class="chart-wrap"><canvas id="chartBar"></canvas></div>
+                </div>
+                <div class="chart-box">
+                    <h3>ステータス別分布</h3>
+                    <div class="chart-wrap"><canvas id="chartDoughnut"></canvas></div>
+                </div>
+            </div>
+            <div class="panel">
+                <div class="panel-header"><h3>査定サイト別反響数</h3></div>
+                <div class="table-wrap">
+                    <table>
+                        <thead><tr><th>査定サイト</th><th>反響数</th><th>接続数</th><th>接続率</th></tr></thead>
+                        <tbody id="siteTable"></tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+
+        <!-- Tab: Inquiries -->
+        <div class="tab-section" id="tab-inquiries">
+            <div class="panel">
+                <div class="panel-header">
+                    <div style="display:flex;align-items:center;gap:12px;flex-wrap:wrap;">
+                        <h3>反響一覧</h3>
+                        <button class="btn btn-primary btn-sm" onclick="openInquiryModal()">
+                            <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+                            新規追加
+                        </button>
+                    </div>
+                    <input type="text" class="search-box" placeholder="検索（氏名・住所・電話）" id="inquirySearch" oninput="filterInquiries()">
+                </div>
+                <div class="table-wrap">
+                    <table>
+                        <thead><tr>
+                            <th>反響ID</th><th>受信日時</th><th>ステータス</th><th>担当者</th>
+                            <th>顧客氏名</th><th>顧客電話</th><th>物件住所</th><th>査定サイト</th>
+                            <th>架電回数</th><th>操作</th>
+                        </tr></thead>
+                        <tbody id="inquiryTable"></tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+
+        <!-- Tab: Staff -->
+        <div class="tab-section" id="tab-staff">
+            <div class="panel">
+                <div class="panel-header">
+                    <div style="display:flex;align-items:center;gap:12px;">
+                        <h3>担当者マスタ</h3>
+                        <button class="btn btn-primary btn-sm" onclick="openStaffModal()">
+                            <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+                            新規追加
+                        </button>
+                    </div>
+                </div>
+                <div class="table-wrap">
+                    <table>
+                        <thead><tr>
+                            <th>担当者名</th><th>メールアドレス</th><th>LINE User ID</th>
+                            <th>役職</th><th>有効</th><th>操作</th>
+                        </tr></thead>
+                        <tbody id="staffTable"></tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+
+        <!-- Tab: Log -->
+        <div class="tab-section" id="tab-log">
+            <div class="panel">
+                <div class="panel-header"><h3>実行ログ（直近100件）</h3></div>
+                <div class="table-wrap">
+                    <table>
+                        <thead><tr><th>日時</th><th>処理</th><th>結果</th><th>詳細</th></tr></thead>
+                        <tbody id="logTable"></tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+
+        <!-- Tab: Settings -->
+        <div class="tab-section" id="tab-settings">
+            <div class="panel" style="max-width:720px;">
+                <div class="panel-header"><h3>設定</h3></div>
+                <div style="padding:20px;" id="settingsForm">
+                    <div class="form-section">
+                        <div class="form-section-title">会社情報</div>
+                        <div class="form-row">
+                            <div class="form-group">
+                                <label>会社名</label>
+                                <input type="text" class="form-control" id="setCompanyName">
+                            </div>
+                            <div class="form-group">
+                                <label>会社電話番号</label>
+                                <input type="text" class="form-control" id="setCompanyPhone">
+                            </div>
+                        </div>
+                        <div class="form-group">
+                            <label>代表担当者名</label>
+                            <input type="text" class="form-control" id="setRepName">
+                        </div>
+                    </div>
+                    <div class="form-section">
+                        <div class="form-section-title">通知設定</div>
+                        <div class="form-group">
+                            <label>店長メールアドレス</label>
+                            <input type="email" class="form-control" id="setManagerEmail">
+                        </div>
+                        <div class="form-row">
+                            <div class="form-group">
+                                <label>未対応アラート（分）</label>
+                                <input type="number" class="form-control" id="setAlertMin" min="1">
+                            </div>
+                            <div class="form-group">
+                                <label>再架電リマインド（分）</label>
+                                <input type="number" class="form-control" id="setRemindMin" min="1">
+                            </div>
+                        </div>
+                    </div>
+                    <div class="form-section">
+                        <div class="form-section-title">営業時間</div>
+                        <div class="form-row">
+                            <div class="form-group">
+                                <label>開始時間</label>
+                                <input type="time" class="form-control" id="setStartTime">
+                            </div>
+                            <div class="form-group">
+                                <label>終了時間</label>
+                                <input type="time" class="form-control" id="setEndTime">
+                            </div>
+                        </div>
+                    </div>
+                    <div style="text-align:right;">
+                        <button class="btn btn-primary" onclick="saveSettings()">保存する</button>
+                    </div>
+                    <hr style="margin:28px 0;border:none;border-top:1px solid var(--border);">
+                    <div class="form-section">
+                        <div class="form-section-title">体験版データ</div>
+                        <p style="font-size:13px;color:var(--text-muted);margin-bottom:12px;">デモ用のサンプルデータを管理します。</p>
+                        <div style="display:flex;gap:12px;flex-wrap:wrap;">
+                            <button class="btn btn-success" onclick="initDemoData()">デモデータ初期化</button>
+                            <button class="btn btn-danger" onclick="clearAllData()">データクリア</button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+    </div>
+</div>
+
+<!-- Modal -->
+<div class="modal-backdrop" id="modalBackdrop" onclick="if(event.target===this)closeModal()">
+    <div class="modal">
+        <div class="modal-head">
+            <h3 id="modalTitle">タイトル</h3>
+            <button class="modal-close" onclick="closeModal()">&times;</button>
+        </div>
+        <div class="modal-body" id="modalBody"></div>
+        <div class="modal-foot" id="modalFoot"></div>
+    </div>
+</div>
+
+<!-- Toast container -->
+<div class="toast-container" id="toastContainer"></div>
+
+<!-- Loading overlay -->
+<div class="loading-overlay" id="loadingOverlay"><div class="spinner"></div></div>
+
+<!-- Setup overlay -->
+<div class="setup-overlay" id="setupOverlay">
+    <div class="setup-box">
+        <h2>初期設定</h2>
+        <p>GAS WebアプリのURLを入力してください。<br>デプロイ済みのGoogle Apps ScriptのURLが必要です。</p>
+        <input type="text" class="form-control" id="setupGasUrl" placeholder="https://script.google.com/macros/s/.../exec">
+        <button class="btn btn-primary" onclick="saveGasUrl()" style="width:100%;">接続する</button>
+        <p style="font-size:12px;color:var(--text-muted);margin-top:12px;">※ URLはブラウザのローカルストレージに保存されます</p>
+    </div>
+</div>
+
+<script>
+/* ===== Global State ===== */
+var GAS_URL = '';
+var currentTab = 'dashboard';
+var inquiriesData = [];
+var staffData = [];
+var logData = [];
+var chartBar = null;
+var chartDoughnut = null;
+
+var TAB_TITLES = {
+    dashboard: 'ダッシュボード',
+    inquiries: '反響一覧',
+    staff: '担当者マスタ',
+    log: '実行ログ',
+    settings: '設定'
+};
+
+var STATUS_MAP = {
+    '未対応': 'badge-red',
+    '対応中': 'badge-yellow',
+    '接続': 'badge-green',
+    '不在': 'badge-gray',
+    '折返待': 'badge-blue',
+    '完了': 'badge-darkgray',
+    'NG': 'badge-darkred',
+    '要確認': 'badge-orange',
+    '重複疑い': 'badge-purple'
+};
+
+var RESULT_MAP = {
+    'OK': 'badge-green',
+    'ERROR': 'badge-red',
+    'WARN': 'badge-orange',
+    'SKIP': 'badge-gray',
+    'ALERT': 'badge-red'
+};
+
+var STATUSES = ['未対応','対応中','接続','不在','折返待','完了','NG','要確認','重複疑い'];
+var SITES = ['イエウール','HOME4U','リビンマッチ','SUUMO','すまいValue','マンションナビ','LIFULL','その他'];
+
+/* ===== API Functions ===== */
+function apiGet(action, params, cb) {
+    if (!GAS_URL) return;
+    showLoading(true);
+    var url = GAS_URL + '?action=' + action;
+    if (params) { for (var k in params) url += '&' + k + '=' + encodeURIComponent(params[k]); }
+    fetch(url)
+        .then(function(r) { return r.json(); })
+        .then(function(d) { showLoading(false); cb(d); })
+        .catch(function(e) { showLoading(false); showToast('通信エラー: ' + e.message, 'danger'); });
+}
+
+function apiPost(action, data, cb) {
+    if (!GAS_URL) return;
+    showLoading(true);
+    var url = GAS_URL + '?action=' + action + '&d=' + encodeURIComponent(JSON.stringify(data));
+    fetch(url)
+        .then(function(r) { return r.json(); })
+        .then(function(d) { showLoading(false); cb(d); })
+        .catch(function(e) { showLoading(false); showToast('通信エラー: ' + e.message, 'danger'); });
+}
+
+/* ===== Toast ===== */
+function showToast(msg, type) {
+    type = type || 'info';
+    var el = document.createElement('div');
+    el.className = 'toast toast-' + type;
+    el.textContent = msg;
+    document.getElementById('toastContainer').appendChild(el);
+    setTimeout(function() { el.style.opacity = '0'; el.style.transition = 'opacity 0.3s'; }, 2700);
+    setTimeout(function() { el.remove(); }, 3000);
+}
+
+/* ===== Loading ===== */
+function showLoading(v) {
+    document.getElementById('loadingOverlay').classList.toggle('show', v);
+}
+
+/* ===== Sidebar / Navigation ===== */
+function toggleSidebar() {
+    var sb = document.getElementById('sidebar');
+    var ov = document.getElementById('sidebarOverlay');
+    sb.classList.toggle('open');
+    ov.classList.toggle('show');
+}
+
+function switchTab(tab) {
+    currentTab = tab;
+    document.querySelectorAll('.tab-section').forEach(function(el) { el.classList.remove('active'); });
+    document.getElementById('tab-' + tab).classList.add('active');
+    document.querySelectorAll('.nav-item').forEach(function(el) {
+        el.classList.toggle('active', el.getAttribute('data-tab') === tab);
+    });
+    document.getElementById('headerTitle').textContent = TAB_TITLES[tab] || '';
+    /* Close sidebar on mobile */
+    if (window.innerWidth < 768) {
+        document.getElementById('sidebar').classList.remove('open');
+        document.getElementById('sidebarOverlay').classList.remove('show');
+    }
+    loadTabData(tab);
+}
+
+function loadTabData(tab) {
+    if (!GAS_URL) return;
+    if (tab === 'dashboard') loadDashboard();
+    else if (tab === 'inquiries') loadInquiries();
+    else if (tab === 'staff') loadStaff();
+    else if (tab === 'log') loadLog();
+    else if (tab === 'settings') loadSettings();
+}
+
+/* ===== Modal ===== */
+function openModal(title, bodyHtml, footHtml) {
+    document.getElementById('modalTitle').textContent = title;
+    document.getElementById('modalBody').innerHTML = bodyHtml;
+    document.getElementById('modalFoot').innerHTML = footHtml || '';
+    document.getElementById('modalBackdrop').classList.add('show');
+}
+function closeModal() {
+    document.getElementById('modalBackdrop').classList.remove('show');
+}
+
+/* ===== HTML Helpers ===== */
+function esc(s) {
+    if (s == null) return '';
+    var d = document.createElement('div');
+    d.textContent = String(s);
+    return d.innerHTML;
+}
+
+function statusBadge(status) {
+    var cls = STATUS_MAP[status] || 'badge-gray';
+    return '<span class="badge ' + cls + '">' + esc(status) + '</span>';
+}
+
+function resultBadge(result) {
+    var cls = RESULT_MAP[result] || 'badge-gray';
+    return '<span class="badge ' + cls + '">' + esc(result) + '</span>';
+}
+
+function selectHtml(id, options, selected) {
+    var h = '<select class="form-control" id="' + id + '">';
+    options.forEach(function(o) {
+        h += '<option value="' + esc(o) + '"' + (o === selected ? ' selected' : '') + '>' + esc(o) + '</option>';
+    });
+    h += '</select>';
+    return h;
+}
+
+function fmtDate(d) {
+    if (!d) return '';
+    var dt = new Date(d);
+    if (isNaN(dt)) return esc(d);
+    var mm = ('0' + (dt.getMonth() + 1)).slice(-2);
+    var dd = ('0' + dt.getDate()).slice(-2);
+    var hh = ('0' + dt.getHours()).slice(-2);
+    var mi = ('0' + dt.getMinutes()).slice(-2);
+    return dt.getFullYear() + '/' + mm + '/' + dd + ' ' + hh + ':' + mi;
+}
+
+/* ===== Dashboard ===== */
+function loadDashboard() {
+    apiGet('getDashboard', null, function(d) {
+        if (!d || d.error) { showToast('ダッシュボードの取得に失敗しました', 'danger'); return; }
+        renderDashboard(d);
+    });
+}
+
+function renderDashboard(d) {
+    document.getElementById('statToday').textContent = d.todayCount != null ? d.todayCount : 0;
+    document.getElementById('statUnattended').textContent = d.unattendedCount != null ? d.unattendedCount : 0;
+    document.getElementById('statConnected').textContent = d.connectedCount != null ? d.connectedCount : 0;
+    var rate = d.connectionRate != null ? d.connectionRate : 0;
+    document.getElementById('statRate').textContent = rate + '%';
+
+    /* Bar chart */
+    var labels7 = (d.last7Days || []).map(function(r) { return r.date; });
+    var vals7 = (d.last7Days || []).map(function(r) { return r.count; });
+    if (chartBar) chartBar.destroy();
+    chartBar = new Chart(document.getElementById('chartBar'), {
+        type: 'bar',
+        data: {
+            labels: labels7,
+            datasets: [{
+                label: '反響数',
+                data: vals7,
+                backgroundColor: 'rgba(231,76,60,0.7)',
+                borderRadius: 3
+            }]
+        },
+        options: {
+            responsive: true, maintainAspectRatio: false,
+            plugins: { legend: { display: false } },
+            scales: { y: { beginAtZero: true, ticks: { stepSize: 1 } } }
+        }
+    });
+
+    /* Doughnut */
+    var statusLabels = (d.statusDist || []).map(function(r) { return r.status; });
+    var statusVals = (d.statusDist || []).map(function(r) { return r.count; });
+    var dColors = statusLabels.map(function(s) {
+        var map = { '未対応':'#e74c3c','対応中':'#f39c12','接続':'#27ae60','不在':'#95a5a6','折返待':'#3498db','完了':'#5d6d7e','NG':'#78281f','要確認':'#e67e22','重複疑い':'#8e44ad' };
+        return map[s] || '#bdc3c7';
+    });
+    if (chartDoughnut) chartDoughnut.destroy();
+    chartDoughnut = new Chart(document.getElementById('chartDoughnut'), {
+        type: 'doughnut',
+        data: {
+            labels: statusLabels,
+            datasets: [{ data: statusVals, backgroundColor: dColors }]
+        },
+        options: {
+            responsive: true, maintainAspectRatio: false,
+            plugins: { legend: { position: 'right', labels: { boxWidth: 12, font: { size: 12 } } } }
+        }
+    });
+
+    /* Site table */
+    var tbody = document.getElementById('siteTable');
+    var rows = (d.siteDist || []).map(function(r) {
+        var sRate = r.total > 0 ? Math.round(r.connected / r.total * 100) : 0;
+        return '<tr><td>' + esc(r.site) + '</td><td>' + r.total + '</td><td>' + r.connected + '</td><td>' + sRate + '%</td></tr>';
+    }).join('');
+    tbody.innerHTML = rows || '<tr><td colspan="4" style="text-align:center;color:var(--text-muted);padding:20px;">データなし</td></tr>';
+}
+
+/* ===== Inquiries ===== */
+function loadInquiries() {
+    apiGet('getInquiries', null, function(d) {
+        if (!d || d.error) { showToast('反響一覧の取得に失敗しました', 'danger'); return; }
+        inquiriesData = d.data || d || [];
+        renderInquiries(inquiriesData);
+    });
+}
+
+function renderInquiries(list) {
+    var tbody = document.getElementById('inquiryTable');
+    if (!list || list.length === 0) {
+        tbody.innerHTML = '<tr><td colspan="10" style="text-align:center;color:var(--text-muted);padding:20px;">データなし</td></tr>';
+        return;
+    }
+    tbody.innerHTML = list.map(function(r) {
+        return '<tr>' +
+            '<td>' + esc(r.id) + '</td>' +
+            '<td style="white-space:nowrap;">' + fmtDate(r.receivedAt) + '</td>' +
+            '<td>' + statusBadge(r.status) + '</td>' +
+            '<td>' + esc(r.staff) + '</td>' +
+            '<td>' + esc(r.customerName) + '</td>' +
+            '<td style="white-space:nowrap;">' + esc(r.customerPhone) + '</td>' +
+            '<td>' + esc(r.propertyAddress) + '</td>' +
+            '<td>' + esc(r.site) + '</td>' +
+            '<td style="text-align:center;">' + (r.callCount != null ? r.callCount : 0) + '</td>' +
+            '<td style="white-space:nowrap;">' +
+                '<button class="btn btn-outline btn-sm" onclick="openInquiryModal(' + esc(r.rowIndex) + ')">編集</button> ' +
+                '<button class="btn btn-danger btn-sm" onclick="deleteInquiry(' + esc(r.rowIndex) + ')">削除</button>' +
+            '</td></tr>';
+    }).join('');
+}
+
+function filterInquiries() {
+    var q = document.getElementById('inquirySearch').value.toLowerCase();
+    if (!q) { renderInquiries(inquiriesData); return; }
+    var filtered = inquiriesData.filter(function(r) {
+        return (r.customerName || '').toLowerCase().indexOf(q) >= 0 ||
+               (r.propertyAddress || '').toLowerCase().indexOf(q) >= 0 ||
+               (r.customerPhone || '').toLowerCase().indexOf(q) >= 0;
+    });
+    renderInquiries(filtered);
+}
+
+function openInquiryModal(rowIndex) {
+    var isEdit = rowIndex != null;
+    var r = {};
+    if (isEdit) {
+        r = inquiriesData.find(function(x) { return x.rowIndex === rowIndex; }) || {};
+    }
+    var staffOptions = staffData.map(function(s) { return s.name; });
+    staffOptions.unshift('');
+
+    var body =
+        '<div class="form-row">' +
+            '<div class="form-group"><label>顧客氏名</label><input type="text" class="form-control" id="inqName" value="' + esc(r.customerName || '') + '"></div>' +
+            '<div class="form-group"><label>顧客電話</label><input type="text" class="form-control" id="inqPhone" value="' + esc(r.customerPhone || '') + '"></div>' +
+        '</div>' +
+        '<div class="form-group"><label>物件住所</label><input type="text" class="form-control" id="inqAddress" value="' + esc(r.propertyAddress || '') + '"></div>' +
+        '<div class="form-row">' +
+            '<div class="form-group"><label>査定サイト</label>' + selectHtml('inqSite', SITES, r.site || SITES[0]) + '</div>' +
+            '<div class="form-group"><label>ステータス</label>' + selectHtml('inqStatus', STATUSES, r.status || STATUSES[0]) + '</div>' +
+        '</div>' +
+        '<div class="form-row">' +
+            '<div class="form-group"><label>担当者</label>' + selectHtml('inqStaff', staffOptions, r.staff || '') + '</div>' +
+            '<div class="form-group"><label>架電回数</label><input type="number" class="form-control" id="inqCallCount" value="' + (r.callCount != null ? r.callCount : 0) + '" min="0"></div>' +
+        '</div>';
+
+    var foot = '<button class="btn btn-secondary" onclick="closeModal()">キャンセル</button>' +
+        '<button class="btn btn-primary" onclick="saveInquiry(' + (isEdit ? rowIndex : 'null') + ')">' + (isEdit ? '更新' : '追加') + '</button>';
+
+    openModal(isEdit ? '反響編集' : '反響追加', body, foot);
+}
+
+function saveInquiry(rowIndex) {
+    var data = {
+        customerName: document.getElementById('inqName').value.trim(),
+        customerPhone: document.getElementById('inqPhone').value.trim(),
+        propertyAddress: document.getElementById('inqAddress').value.trim(),
+        site: document.getElementById('inqSite').value,
+        status: document.getElementById('inqStatus').value,
+        staff: document.getElementById('inqStaff').value,
+        callCount: parseInt(document.getElementById('inqCallCount').value) || 0
+    };
+    if (!data.customerName || !data.customerPhone) {
+        showToast('顧客氏名と電話番号は必須です', 'warning');
+        return;
+    }
+    if (rowIndex != null) data.rowIndex = rowIndex;
+    var action = rowIndex != null ? 'updateInquiry' : 'addInquiry';
+    apiPost(action, data, function(res) {
+        if (res && res.success) {
+            showToast(rowIndex != null ? '更新しました' : '追加しました', 'success');
+            closeModal();
+            loadInquiries();
+            loadDashboard();
+        } else {
+            showToast('保存に失敗しました: ' + (res ? res.error : '不明なエラー'), 'danger');
+        }
+    });
+}
+
+function deleteInquiry(rowIndex) {
+    if (!confirm('この反響を削除しますか?')) return;
+    apiPost('deleteInquiry', { rowIndex: rowIndex }, function(res) {
+        if (res && res.success) {
+            showToast('削除しました', 'success');
+            loadInquiries();
+            loadDashboard();
+        } else {
+            showToast('削除に失敗しました', 'danger');
+        }
+    });
+}
+
+/* ===== Staff ===== */
+function loadStaff() {
+    apiGet('getStaff', null, function(d) {
+        if (!d || d.error) { showToast('担当者の取得に失敗しました', 'danger'); return; }
+        staffData = d.data || d || [];
+        renderStaff(staffData);
+    });
+}
+
+function renderStaff(list) {
+    var tbody = document.getElementById('staffTable');
+    if (!list || list.length === 0) {
+        tbody.innerHTML = '<tr><td colspan="6" style="text-align:center;color:var(--text-muted);padding:20px;">データなし</td></tr>';
+        return;
+    }
+    tbody.innerHTML = list.map(function(r) {
+        var activeBadge = r.active ? '<span class="badge badge-green">有効</span>' : '<span class="badge badge-gray">無効</span>';
+        return '<tr>' +
+            '<td>' + esc(r.name) + '</td>' +
+            '<td>' + esc(r.email) + '</td>' +
+            '<td style="font-size:12px;">' + esc(r.lineUserId) + '</td>' +
+            '<td>' + esc(r.role) + '</td>' +
+            '<td>' + activeBadge + '</td>' +
+            '<td style="white-space:nowrap;">' +
+                '<button class="btn btn-outline btn-sm" onclick="openStaffModal(' + esc(r.rowIndex) + ')">編集</button> ' +
+                '<button class="btn btn-danger btn-sm" onclick="deleteStaff(' + esc(r.rowIndex) + ')">削除</button>' +
+            '</td></tr>';
+    }).join('');
+}
+
+function openStaffModal(rowIndex) {
+    var isEdit = rowIndex != null;
+    var r = {};
+    if (isEdit) {
+        r = staffData.find(function(x) { return x.rowIndex === rowIndex; }) || {};
+    }
+    var roles = ['店長','営業主任','営業','アシスタント'];
+    var body =
+        '<div class="form-row">' +
+            '<div class="form-group"><label>担当者名</label><input type="text" class="form-control" id="stfName" value="' + esc(r.name || '') + '"></div>' +
+            '<div class="form-group"><label>メールアドレス</label><input type="email" class="form-control" id="stfEmail" value="' + esc(r.email || '') + '"></div>' +
+        '</div>' +
+        '<div class="form-group"><label>LINE User ID</label><input type="text" class="form-control" id="stfLine" value="' + esc(r.lineUserId || '') + '"></div>' +
+        '<div class="form-row">' +
+            '<div class="form-group"><label>役職</label>' + selectHtml('stfRole', roles, r.role || roles[0]) + '</div>' +
+            '<div class="form-group"><label>有効</label>' + selectHtml('stfActive', ['有効','無効'], r.active ? '有効' : '無効') + '</div>' +
+        '</div>';
+
+    var foot = '<button class="btn btn-secondary" onclick="closeModal()">キャンセル</button>' +
+        '<button class="btn btn-primary" onclick="saveStaff(' + (isEdit ? rowIndex : 'null') + ')">' + (isEdit ? '更新' : '追加') + '</button>';
+
+    openModal(isEdit ? '担当者編集' : '担当者追加', body, foot);
+}
+
+function saveStaff(rowIndex) {
+    var data = {
+        name: document.getElementById('stfName').value.trim(),
+        email: document.getElementById('stfEmail').value.trim(),
+        lineUserId: document.getElementById('stfLine').value.trim(),
+        role: document.getElementById('stfRole').value,
+        active: document.getElementById('stfActive').value === '有効'
+    };
+    if (!data.name) {
+        showToast('担当者名は必須です', 'warning');
+        return;
+    }
+    if (rowIndex != null) data.rowIndex = rowIndex;
+    var action = rowIndex != null ? 'updateStaff' : 'addStaff';
+    apiPost(action, data, function(res) {
+        if (res && res.success) {
+            showToast(rowIndex != null ? '更新しました' : '追加しました', 'success');
+            closeModal();
+            loadStaff();
+        } else {
+            showToast('保存に失敗しました', 'danger');
+        }
+    });
+}
+
+function deleteStaff(rowIndex) {
+    if (!confirm('この担当者を削除しますか?')) return;
+    apiPost('deleteStaff', { rowIndex: rowIndex }, function(res) {
+        if (res && res.success) {
+            showToast('削除しました', 'success');
+            loadStaff();
+        } else {
+            showToast('削除に失敗しました', 'danger');
+        }
+    });
+}
+
+/* ===== Log ===== */
+function loadLog() {
+    apiGet('getLog', { limit: 100 }, function(d) {
+        if (!d || d.error) { showToast('ログの取得に失敗しました', 'danger'); return; }
+        logData = d.data || d || [];
+        renderLog(logData);
+    });
+}
+
+function renderLog(list) {
+    var tbody = document.getElementById('logTable');
+    if (!list || list.length === 0) {
+        tbody.innerHTML = '<tr><td colspan="4" style="text-align:center;color:var(--text-muted);padding:20px;">ログなし</td></tr>';
+        return;
+    }
+    tbody.innerHTML = list.map(function(r) {
+        return '<tr>' +
+            '<td style="white-space:nowrap;">' + fmtDate(r.timestamp) + '</td>' +
+            '<td>' + esc(r.process) + '</td>' +
+            '<td>' + resultBadge(r.result) + '</td>' +
+            '<td style="font-size:12px;max-width:400px;overflow:hidden;text-overflow:ellipsis;">' + esc(r.detail) + '</td>' +
+            '</tr>';
+    }).join('');
+}
+
+/* ===== Settings ===== */
+function loadSettings() {
+    apiGet('getSettings', null, function(d) {
+        if (!d || d.error) return;
+        var s = d.data || d;
+        document.getElementById('setCompanyName').value = s.companyName || '';
+        document.getElementById('setCompanyPhone').value = s.companyPhone || '';
+        document.getElementById('setRepName').value = s.repName || '';
+        document.getElementById('setManagerEmail').value = s.managerEmail || '';
+        document.getElementById('setAlertMin').value = s.alertMinutes || 30;
+        document.getElementById('setRemindMin').value = s.remindMinutes || 60;
+        document.getElementById('setStartTime').value = s.startTime || '09:00';
+        document.getElementById('setEndTime').value = s.endTime || '19:00';
+    });
+}
+
+function saveSettings() {
+    var data = {
+        companyName: document.getElementById('setCompanyName').value.trim(),
+        companyPhone: document.getElementById('setCompanyPhone').value.trim(),
+        repName: document.getElementById('setRepName').value.trim(),
+        managerEmail: document.getElementById('setManagerEmail').value.trim(),
+        alertMinutes: parseInt(document.getElementById('setAlertMin').value) || 30,
+        remindMinutes: parseInt(document.getElementById('setRemindMin').value) || 60,
+        startTime: document.getElementById('setStartTime').value,
+        endTime: document.getElementById('setEndTime').value
+    };
+    apiPost('saveSettings', data, function(res) {
+        if (res && res.success) {
+            showToast('設定を保存しました', 'success');
+        } else {
+            showToast('保存に失敗しました', 'danger');
+        }
+    });
+}
+
+function initDemoData() {
+    if (!confirm('デモデータを初期化します。既存データは上書きされます。よろしいですか?')) return;
+    apiPost('initDemo', {}, function(res) {
+        if (res && res.success) {
+            showToast('デモデータを初期化しました', 'success');
+            loadTabData(currentTab);
+        } else {
+            showToast('初期化に失敗しました', 'danger');
+        }
+    });
+}
+
+function clearAllData() {
+    if (!confirm('全てのデータを削除します。この操作は元に戻せません。よろしいですか?')) return;
+    apiPost('clearData', {}, function(res) {
+        if (res && res.success) {
+            showToast('データをクリアしました', 'success');
+            loadTabData(currentTab);
+        } else {
+            showToast('クリアに失敗しました', 'danger');
+        }
+    });
+}
+
+/* ===== Setup ===== */
+function checkGasUrl() {
+    var saved = localStorage.getItem('fudosan_gas_url');
+    if (saved) {
+        GAS_URL = saved;
+        document.getElementById('setupOverlay').classList.remove('show');
+        /* Load staff data first for inquiry modal, then load current tab */
+        apiGet('getStaff', null, function(d) {
+            staffData = (d && !d.error) ? (d.data || d || []) : [];
+            loadTabData(currentTab);
+        });
+    } else {
+        document.getElementById('setupOverlay').classList.add('show');
+    }
+}
+
+function saveGasUrl() {
+    var url = document.getElementById('setupGasUrl').value.trim();
+    if (!url) { showToast('URLを入力してください', 'warning'); return; }
+    if (url.indexOf('https://script.google.com/') !== 0) {
+        showToast('正しいGAS URLを入力してください', 'warning');
+        return;
+    }
+    localStorage.setItem('fudosan_gas_url', url);
+    GAS_URL = url;
+    document.getElementById('setupOverlay').classList.remove('show');
+    showToast('接続設定を保存しました', 'success');
+    apiGet('getStaff', null, function(d) {
+        staffData = (d && !d.error) ? (d.data || d || []) : [];
+        loadTabData(currentTab);
+    });
+}
+
+/* ===== Init ===== */
+document.addEventListener('DOMContentLoaded', function() {
+    checkGasUrl();
+});
+</script>
+</body>
+</html>
